@@ -3,3 +3,6 @@
     2、 appserver    中的启动类：AppserverApplication
     3、 appclient    中的启动类：AppclientApplication
 
+#注意技术点
+    1、使用 Idea 的 Spring Initialiar 创建项目，子模块相关代码；
+    2、使用 eureka 和 ribbon 解决部分代码问题；
