@@ -30,7 +30,6 @@ public class SwaggerConfig {
         return new ApiInfoBuilder()
                 .title("alexgaoyh swagger ui title")
                 .description("this is a swagger ui desctiption")
-                .contact("alexgaoyh")
                 .version("1.0")
                 .build();
     }
