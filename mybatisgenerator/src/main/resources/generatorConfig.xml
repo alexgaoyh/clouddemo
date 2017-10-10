@@ -1,13 +1,16 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE generatorConfiguration
-        PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
-        "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
-
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE generatorConfiguration PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN" "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd" >
+<!--  每次修改的部分为替换  targetPackage tableName 部分，对应数据库不同的表结构，不同的包名，自动映射出来相关的类文件  -->
+<!--  注意如果是单表结构的逻辑，增加 两个自定义插件，并且必须有 id deleteFlag createTime 表字段   -->
+<!--  如果为关联关系的表结构，注释掉两个自定义插件，并且关联关系的两个表字段，设定为复合主键，之后生成的实体类型，默认为 Key 后缀的主键名称   -->
 <generatorConfiguration>
 
-    <classPathEntry location="C:\\Users\\lenovo\\.m2\\repository\\mysql\\mysql-connector-java\\5.1.21\\mysql-connector-java-5.1.21.jar" />
+    <!-- 引入配置文件 -->
+    <properties resource="mybatis-generator.properties"/>
 
-    <context id="mysql_tables" targetRuntime="MyBatis3Simple">
+    <classPathEntry location="${classPath}" />
+
+    <context id="context1" targetRuntime="MyBatis3">
 
         <property name="javaFileEncoding" value="UTF-8"/>
 
@@ -17,36 +20,100 @@
 
         <!-- 为生成的Java模型创建一个toString方法 -->
         <plugin type="org.mybatis.generator.plugins.ToStringPlugin"></plugin>
-        <!-- generate entity时，生成hashcode和equals方法 -->
-        <plugin type="org.mybatis.generator.plugins.EqualsHashCodePlugin" />
-        <!-- generate entity时，生成serialVersionUID -->
-        <plugin type="org.mybatis.generator.plugins.SerializablePlugin" />
 
-        <!-- 去掉mybatis生成的注释 -->
-        <commentGenerator>
-            <property name="suppressDate" value="true"/>
+        <!--  自定义的序列化 类文件 插件 -->
+        <plugin type="org.mybatis.generator.plugins.SerializablePlugin"></plugin>
+
+        <!-- 自动生成equals方法和hashcode方法 -->
+        <plugin type="org.mybatis.generator.plugins.EqualsHashCodePlugin"/>
+
+        <!-- mysql oracle 两种数据源的分页配置插件 根据 _databaseId 的区别来区分当前数据源是oracle还是mysql，方便数据迁移过程中的分页逻辑不报错 -->
+        <plugin type="com.alexgaoyh.mybatis.plugin.MutiDatasourcePaginationPlugin"></plugin>
+
+        <!-- 取消 Example 类文件的生成，在进行代码生成器的过程中，生成 selectCountByMap selectListByMap 两种方法，代替 Example 方法的生成 -->
+        <plugin type="com.alexgaoyh.mybatis.plugin.SelectCountAndListByMapPlugin"></plugin>
+
+        <!-- 列权限的部分处理，传递哪个值到map集合中，则哪个值不查询出来 -->
+        <plugin type="com.alexgaoyh.mybatis.plugin.AddColumnCheckToBaseColumnListPlugin"></plugin>
+
+        <!-- 实体类部分的注释 -->
+        <plugin type="com.alexgaoyh.mybatis.plugin.MyTableAnnotationPlugin"></plugin>
+
+        <plugin type="com.alexgaoyh.mybatis.plugin.MyDynamicTableNamePlugin"></plugin>
+        <plugin type="com.alexgaoyh.mybatis.plugin.MyInsertUpdateDynamicTableNamePlugin"></plugin>
+
+        <!-- 自定义 注释部分，增加字段方面的注释 -->
+        <commentGenerator type="com.alexgaoyh.mybatis.plugin.MyCommentGeneratorPlugin">
             <property name="suppressAllComments" value="true" />
         </commentGenerator>
 
-        <jdbcConnection driverClass="com.mysql.jdbc.Driver"
-                        connectionURL="jdbc:mysql://127.0.0.1:3306/data"
-                        userId="root"
-                        password="alexgaoyh">
-        </jdbcConnection>
+        <jdbcConnection driverClass="${driverClass}"
+                        connectionURL="${connectionURL}"
+                        userId="${userId}" password="${password}" />
 
-        <javaTypeResolver >
-            <property name="forceBigDecimals" value="false" />
-        </javaTypeResolver>
-
-        <javaModelGenerator targetPackage="com.alexgaoyh.model" targetProject="src/main/java">
-            <property name="trimStrings" value="true" />
+        <javaModelGenerator targetPackage="${targetPackageBase}.${myBussinessPackage}.entity" targetProject="${targetProject}\src\main\java" >
         </javaModelGenerator>
 
-        <javaClientGenerator type="ANNOTATEDMAPPER" targetPackage="com.alexgaoyh.dao" targetProject="src/main/java">
-        </javaClientGenerator>
+        <sqlMapGenerator targetPackage="${targetPackageBase}.${myBussinessPackage}.mapper" targetProject="${targetProject}\src\main\resources" />
 
-        <table tableName="sysman_user" domainObjectName="SysmanUser" >
+        <javaClientGenerator targetPackage="${targetPackageBase}.${myBussinessPackage}.mapper" targetProject="${targetProject}\src\main\java" type="XMLMAPPER" />
+
+        <!-- domainObjectName 部分，如果不加的话，好像数据库表结构是驼峰式的话，生成的*。java类文件不是驼峰式的结构，故加上这个配置部分 -->
+        <!-- table 中增加属性 alias 部分，这一部分的设定，用来给表结构增加别名，如果出现关联查询的情况下，可以通过设定表结构的别名，来避免  Oracle00-918:未明确定义列的错误 -->
+        <!-- alias:如果指定，这个值会用在生成的select查询SQL的表的别名和列名上。 列名会被别名为 alias_actualColumnName(别名_实际列名) 这种模式。 -->
+        <!-- 选择一个table来生成相关文件，可以有一个或多个table，必须要有table元素
+		        选择的table会生成一下文件：
+		        1，SQL map文件
+		        2，生成一个主键类；
+		        3，除了BLOB和主键的其他字段的类；
+		        4，包含BLOB的类；
+		        5，一个用户生成动态查询的条件类（selectByExample, deleteByExample），可选；
+		        6，Mapper接口（可选）
+
+		        tableName（必要）：要生成对象的表名；
+		        注意：大小写敏感问题。正常情况下，MBG会自动的去识别数据库标识符的大小写敏感度，在一般情况下，MBG会
+		            根据设置的schema，catalog或tablename去查询数据表，按照下面的流程：
+		            1，如果schema，catalog或tablename中有空格，那么设置的是什么格式，就精确的使用指定的大小写格式去查询；
+		            2，否则，如果数据库的标识符使用大写的，那么MBG自动把表名变成大写再查找；
+		            3，否则，如果数据库的标识符使用小写的，那么MBG自动把表名变成小写再查找；
+		            4，否则，使用指定的大小写格式查询；
+		        另外的，如果在创建表的时候，使用的""把数据库对象规定大小写，就算数据库标识符是使用的大写，在这种情况下也会使用给定的大小写来创建表名；
+		        这个时候，请设置delimitIdentifiers="true"即可保留大小写格式；
+
+		        可选：
+		        1，schema：数据库的schema；
+		        2，catalog：数据库的catalog；
+		        3，alias：为数据表设置的别名，如果设置了alias，那么生成的所有的SELECT SQL语句中，列名会变成：alias_actualColumnName
+		        4，domainObjectName：生成的domain类的名字，如果不设置，直接使用表名作为domain类的名字；可以设置为somepck.domainName，那么会自动把domainName类再放到somepck包里面；
+		        5，enableInsert（默认true）：指定是否生成insert语句；
+		        6，enableSelectByPrimaryKey（默认true）：指定是否生成按照主键查询对象的语句（就是getById或get）；
+		        7，enableSelectByExample（默认true）：MyBatis3Simple为false，指定是否生成动态查询语句；
+		        8，enableUpdateByPrimaryKey（默认true）：指定是否生成按照主键修改对象的语句（即update)；
+		        9，enableDeleteByPrimaryKey（默认true）：指定是否生成按照主键删除对象的语句（即delete）；
+		        10，enableDeleteByExample（默认true）：MyBatis3Simple为false，指定是否生成动态删除语句；
+		        11，enableCountByExample（默认true）：MyBatis3Simple为false，指定是否生成动态查询总条数语句（用于分页的总条数查询）；
+		        12，enableUpdateByExample（默认true）：MyBatis3Simple为false，指定是否生成动态修改语句（只修改对象中不为空的属性）；
+		        13，modelType：参考context元素的defaultModelType，相当于覆盖；
+		        14，delimitIdentifiers：参考tableName的解释，注意，默认的delimitIdentifiers是双引号，如果类似MYSQL这样的数据库，使用的是`（反引号，那么还需要设置context的beginningDelimiter和endingDelimiter属性）
+		        15，delimitAllColumns：设置是否所有生成的SQL中的列名都使用标识符引起来。默认为false，delimitIdentifiers参考context的属性
+
+		        注意，table里面很多参数都是对javaModelGenerator，context等元素的默认属性的一个复写；
+		     -->
+        <table schema="" tableName="${tableName}" domainObjectName="${domainObjectName}" delimitAllColumns="true"
+               alias="${alias}" enableCountByExample="false" enableUpdateByExample="false" enableDeleteByExample="false"
+               enableSelectByExample="false" selectByExampleQueryId="false">
+
+            <!-- 生成的实体类字段和数据库表结构中的字段一致 -->
+            <!-- <property name="useActualColumnNames" value="true" /> -->
+
+            <!-- 数据库生成的主键id,用来指定自动生成主键的属性（identity字段或者sequences序列）。如果指定这个元素，MBG在生成insert的SQL映射文件中插入一个<selectKey>元素 -->
+            <!-- 单元测试的话 ，使用 demoMapper.insert(demo); 之后，调用  demo。getId() 即可获取到当前的id集合-->
+            <!-- <generatedKey column="id" sqlStatement="Mysql" identity="true" type="post"/>
+
+ -->
+
         </table>
 
     </context>
+
 </generatorConfiguration>
