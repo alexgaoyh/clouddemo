@@ -103,6 +103,12 @@
                alias="${alias}" enableCountByExample="false" enableUpdateByExample="false" enableDeleteByExample="false"
                enableSelectByExample="false" selectByExampleQueryId="false">
 
+            <!--  使用这里的逻辑话，需要所有枚举类都继承 ICommonEnum 类文件 -->
+            <!--<columnOverride column="resource_type" property="resourceType" -->
+                <!--javaType="com.alexgaoyh.common.enums.pojo.ResourceTypeEnum" -->
+                <!--typeHandler="com.alexgaoyh.common.enums.handler.EnumKeyTypeHandler">-->
+                <!--</columnOverride>-->
+
             <!-- 生成的实体类字段和数据库表结构中的字段一致 -->
             <!-- <property name="useActualColumnNames" value="true" /> -->
 
